@@ -3,6 +3,7 @@ import logging
 
 from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.http_websocket import WSMessage
+from aiohttp.web import WSMsgType
 from aioconsole import ainput
 
 logging.basicConfig(level=logging.WARNING)
@@ -18,6 +19,8 @@ async def subscribe_to_messages(websocket: ClientWebSocketResponse) -> None:
     """
     async for message in websocket:
         if isinstance(message, WSMessage):
+            if message.type == WSMsgType.PONG:
+                logger.debug('> PONG')
             message_json = message.json()
             if chat_message := message_json.get('chat_message'):
                 print(f'> {chat_message}')
@@ -32,9 +35,8 @@ async def ping(websocket: ClientWebSocketResponse) -> None:
     :return: None, forever living task
     """
     while True:
-        message = {'jonas': 'is cool'}
-        logger.info('< Sending message: %s', message)
-        await websocket.send_json(message)
+        logger.debug('< PING')
+        await websocket.ping()
         await asyncio.sleep(60)
 
 
@@ -52,6 +54,13 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
 
 
 async def handler() -> None:
+    """
+    TODO: Change nick
+    TODO: Change room
+    TODO: Retrieve user list
+    TODO: Send messages from terminal input
+    :return: 
+    """
     async with ClientSession() as session:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
