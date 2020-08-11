@@ -53,7 +53,7 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
 
 async def handler() -> None:
     async with ClientSession() as session:
-        async with session.ws_connect('ws://0.0.0.0:8080/echo', ssl=False) as ws:
+        async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
             ping_task = asyncio.create_task(ping(websocket=ws))
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
