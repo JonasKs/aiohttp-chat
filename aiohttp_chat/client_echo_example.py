@@ -66,7 +66,8 @@ async def echo_handler() -> None:
             #   * an exception is raised
 
             # First, we want to close the websocket connection
-            await ws.close()
+            if not ws.closed:
+                await ws.close()
             # Then, we cancel each task which is pending:
             for task in pending:
                 task.cancel()
