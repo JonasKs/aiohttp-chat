@@ -28,11 +28,47 @@ For more information about the server and how it works, please look at the docum
 
 ## Chat
 The chat is a bit more complicated than the echo example, and requires one to know the server API in order to 
-completely understand it.
+completely understand it. For an example on how to write your own client, see [#Usage](#Usage)
+
+#### Input/Response API
+Note that you will *not* receive the broadcast message about your changes, only your confirmation or error.
+
+**Change Nick**:
+* Input: `{'action': 'set_nick', 'nick': '<my nickname>'}`
+* Fail: `{'action': 'set_nick', 'success': False, 'message': 'Nickname is already in use'}`
+* OK: `{'action': 'set_nick', 'success': True, 'message': ''}`
+
+
+**Join a room**:
+* Input: `{'action': 'join_room', 'room': '<room name>'}`
+* OK: `{'action': 'join_room', 'success': True, 'message': ''}`
+
+**Send a message**:
+* Input: `{'action': 'chat_message', 'message': '<my message>'}`
+* OK: `{'action': 'chat_message', 'success': True, 'message': '<chat_message>'}`
+
+**Room user list**:
+* Input: `{'action': 'user_list', 'room': '<room_name>'}`
+* OK:`{'action': 'user_list', 'success': True, 'room': '<room_name>', 'users': ['<user1>', '<user2>']}`
+
+
+#### Broadcast messages
+Bodies this server may broadcast to your client at any time:
+- When your client is connecting:
+    - `{'action': 'connecting', 'room': room, 'user': user}`
+- When someone joins the room:
+    - `{'action': 'joined', 'room': room, 'user': user}`
+- When someone leaves the room:
+    - `{'action': 'left', 'room': room, 'user': user}`
+- When someone changes their nick name:
+    - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
+- When someone sends a message:
+    - `{'action': 'chat_message', 'message': message, 'user': user}`
+
 
 #### Usage
 This is intended to get you started writing your own client.  
-For a short list of the API see [`API Simplified`](#Input/Response API)
+For a short list of the API see [`API Simplified`](#Input/Response-API)
 
 
 1) Connect via `ws://0.0.0.0:8080/chat`. In `aiohttp` this can be done like this:  
@@ -105,51 +141,14 @@ See [`client_echo_example.py`](aiohttp_chat/client.py) for an example.
 6) Disconnect
     - With aiohttp close the connection normally:
          websocket.close()
-    (- OR Send a close code: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent)
+    - OR Send a [close code](https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent)
 
 All messages on your actions will return with a `'success': True/False`. 
 
-#### Input/Response API
-Note that you will *not* receive the broadcast message about your changes, only your confirmation or error.
-
-**Change Nick**:
-* Input: `{'action': 'set_nick', 'nick': '<my nickname>'}`
-* Fail: `{'action': 'set_nick', 'success': False, 'message': 'Nickname is already in use'}`
-* OK: `{'action': 'set_nick', 'success': True, 'message': ''}`
-
-
-**Join a room**:
-* Input: `{'action': 'join_room', 'room': '<room name>'}`
-* OK: `{'action': 'join_room', 'success': True, 'message': ''}`
-
-**Send a message**:
-* Input: `{'action': 'chat_message', 'message': '<my message>'}`
-* OK: `{'action': 'chat_message', 'success': True, 'message': '<chat_message>'}`
-
-**Room user list**:
-* Input: `{'action': 'user_list', 'room': '<room_name>'}`
-* OK:`{'action': 'user_list', 'success': True, 'room': '<room_name>', 'users': ['<user1>', '<user2>']}`
-
-
-#### Broadcast messages
-Bodies this server may broadcast to your client at any time:
-- When your client is connecting:
-    - `{'action': 'connecting', 'room': room, 'user': user}`
-- When someone joins the room:
-    - `{'action': 'joined', 'room': room, 'user': user}`
-- When someone leaves the room:
-    - `{'action': 'left', 'room': room, 'user': user}`
-- When someone changes their nick name:
-    - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
-- When someone sends a message:
-    - `{'action': 'chat_message', 'message': message, 'user': user}`
-
-
-### Client explanation
-The client utilizes all these APIs. It has also included a way to interactively chat with other clients
-through the terminal using `aioconsole`. How ever, it's not very intuitive, as it's cluttered with log messages. 
+### Full feature client
+The [`client.py`](aiohttp_chat/client.py) utilizes all these APIs. It has also included a way to interactively chat with other clients
+through the terminal using `aioconsole`. How ever, it's not very clean to use, as it's cluttered with log messages. 
 To get rid of the clutter, simply edit the logger to be `WARNING` instead. 
-
 
 
 ### Server explanation
