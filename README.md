@@ -41,6 +41,7 @@ Note that you will *not* receive the broadcast message about your changes, only 
 
 **Join a room**:
 * Input: `{'action': 'join_room', 'room': '<room name>'}`
+* Fail: `{'action': 'join_room', 'success': False, 'message': 'Name already in use in this room.'}`
 * OK: `{'action': 'join_room', 'success': True, 'message': ''}`
 
 **Send a message**:

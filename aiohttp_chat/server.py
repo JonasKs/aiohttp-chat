@@ -57,6 +57,7 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
 
     **Join a room**:
     * Input: `{'action': 'join_room', 'room': '<room name>'}`
+    * Fail: `{'action': 'join_room', 'success': False, 'message': 'Name already in use in this room.'}`
     * OK: `{'action': 'join_room', 'success': True, 'message': ''}`
 
     **Send a message**:
