@@ -19,23 +19,25 @@ async def subscribe_to_messages(websocket: ClientWebSocketResponse) -> None:
     """
     async for message in websocket:
         if isinstance(message, WSMessage):
-            if message.type == WSMsgType.PONG:
-                logger.debug('> PONG')
-            message_json = message.json()
-            if chat_message := message_json.get('chat_message'):
-                print(f'> {chat_message}')
-            logger.info('> Message from server received: %s', message_json)
+            if message.type == WSMsgType.text:
+                message_json = message.json()
+                if message_json.get('action') == 'chat_message' and not message_json.get('success'):
+                    print(f'> {message_json["message"]}')
+                logger.info('> Message from server received: %s', message_json)
 
 
 async def ping(websocket: ClientWebSocketResponse) -> None:
     """
     A function that sends a PING every minute to keep the connection alive.
+
+    Note that you can do this automatically by simply using `autoping=True` and `heartbeat`. 
+    This is implemented as an example.
     
     :param websocket: Websocket connection
     :return: None, forever living task
     """
     while True:
-        logger.debug('< PING')
+        logger.info('< PING')
         await websocket.ping()
         await asyncio.sleep(60)
 
@@ -68,7 +70,6 @@ async def handler() -> None:
     async with ClientSession() as session:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
-
             # Change nick to `Jonas` and change room to `test`
             await ws.send_json({'action': 'set_nick', 'nick': 'Jonas'})
             await ws.send_json({'action': 'join_room', 'room': 'test'})
@@ -77,7 +78,6 @@ async def handler() -> None:
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
 
             await ws.send_json({'action': 'user_list', 'room': 'test'})
-
             # This function returns two variables, a list of `done` and a list of `pending` tasks.
             # We can ask it to return when all tasks are completed, first task is completed or on first exception
             done, pending = await asyncio.wait(
@@ -88,8 +88,9 @@ async def handler() -> None:
             #   * we (the client) or the server is closing the connection. (websocket.close() in aiohttp)
             #   * an exception is raised
 
-            # First, we want to close the websocket connection
-            await ws.close()
+            # First, we want to close the websocket connection if it's not closed by some other function above
+            if not ws.closed:
+                await ws.close()
             # Then, we cancel each task which is pending:
             for task in pending:
                 task.cancel()
