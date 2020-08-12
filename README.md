@@ -1,3 +1,6 @@
+[![Example Project](https://img.shields.io/badge/project%20type-example%20code-009900.svg)](https://github.com/JonasKs/aiohttp-chat/)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # aiohttp-chat
 This project was created in order to learn more about aiohttp and asyncio, aimed to tackle the following tasks:
 - Use WebSockets to subscribe to data with `aiohttp`
