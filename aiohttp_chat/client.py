@@ -37,7 +37,7 @@ async def ping(websocket: ClientWebSocketResponse) -> None:
     :return: None, forever living task
     """
     while True:
-        logger.info('< PING')
+        logger.debug('< PING')
         await websocket.ping()
         await asyncio.sleep(60)
 
