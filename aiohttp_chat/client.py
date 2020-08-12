@@ -6,7 +6,7 @@ from aiohttp.http_websocket import WSMessage
 from aiohttp.web import WSMsgType
 from aioconsole import ainput
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('client')
 
 
@@ -50,22 +50,33 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
     while True:
         message = await ainput(prompt='Message: ')
         logger.info('< Sending message: %s', message)
-        await websocket.send_json({'message': message})
+        await websocket.send_json({'action': 'chat_message', 'message': message})
 
 
 async def handler() -> None:
     """
-    TODO: Change nick
-    TODO: Change room
-    TODO: Retrieve user list
-    TODO: Send messages from terminal input
+    Does the following things well:
+      * Task that subscribes to all messages from the server
+      * Task that PINGs the backend every 60 second
+      * Change the nickname to `Jonas`
+      * Join a chat room called `test`
+      * Allows sending message from the terminal
+    Does the following bad:
+      * Message formatting. Logs are simply written.
     :return: 
     """
     async with ClientSession() as session:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
+
+            # Change nick to `Jonas` and change room to `test`
+            await ws.send_json({'action': 'set_nick', 'nick': 'Jonas'})
+            await ws.send_json({'action': 'join_room', 'room': 'test'})
+
             ping_task = asyncio.create_task(ping(websocket=ws))
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
+
+            await ws.send_json({'action': 'user_list', 'room': 'test'})
 
             # This function returns two variables, a list of `done` and a list of `pending` tasks.
             # We can ask it to return when all tasks are completed, first task is completed or on first exception
