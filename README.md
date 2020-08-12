@@ -27,7 +27,7 @@ poetry install
 * Properly shut down if one task raises an exception or is completed
 
 The server is mixed together in `server.py`, but the `ws_echo`-function is the view that is used.  
-For more information about the server and how it works, please look at the documentation for [#server](#Server)
+For more information about the actual chat server and how it works, please have a look at the [#server explanation](#Server-explanation) section.
 
 ## Chat
 The chat is a bit more complicated than the echo example, and requires one to know the server API in order to 
