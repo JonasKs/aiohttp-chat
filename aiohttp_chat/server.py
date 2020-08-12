@@ -31,7 +31,7 @@ async def ws_echo(request: Request) -> web.WebSocketResponse:
 
     async for message in websocket:  # For each message in the websocket connection
         if isinstance(message, WSMessage):
-            if message.type == web.WSMsgType.TEXT:  # If it's a text, process it as a message
+            if message.type == web.WSMsgType.text:  # If it's a text, process it as a message
                 message_json = message.json()
                 logger.info('> Received: %s', message_json)
                 echo = {'echo': message_json}
@@ -103,7 +103,7 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
     :param request: Request object
     :return: Websocket response
     """
-    current_websocket = web.WebSocketResponse()  # Create a websocket response object
+    current_websocket = web.WebSocketResponse(autoping=True, heartbeat=60)  # Create a websocket response object
     # Check that everything is OK, if it's not, close the connection.
     ready = current_websocket.can_prepare(request=request)
     if not ready:
@@ -131,11 +131,10 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
         # Inform everyone that user has joined
         for ws in request.app['websockets'][room].values():
             await ws.send_json({'action': 'join', 'user': user, 'room': room})
-
     # Send out messages whenever they are received
     async for message in current_websocket:  # for each message in the websocket connection
         if isinstance(message, WSMessage):
-            if message.type == web.WSMsgType.TEXT:  # If it's a text, process it as a message
+            if message.type == web.WSMsgType.text:  # If it's a text, process it as a message
                 # Parse incoming data
                 message_json = message.json()
                 action = message_json.get('action')
@@ -155,7 +154,7 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
                         )
                         await current_websocket.send_json(return_body)
                     else:
-                        logger.info('%s is now known as %s', user, message_json.get('nick'))
+                        logger.info('%s: %s is now known as %s', room, user, message_json.get('nick'))
                         await current_websocket.send_json(return_body)
                         await broadcast(
                             app=request.app,
@@ -176,14 +175,15 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
                     )
                     if not success:
                         logger.info(
-                            'Unable to change room for %s to %s, reason: %s',
+                            '%s: Unable to change room for %s to %s, reason: %s',
+                            room,
                             user,
                             message_json.get('room'),
                             return_body['message'],
                         )
                         await current_websocket.send_json(return_body)
                     else:
-                        logger.info('User %s joined room %s', user, message_json.get('room'))
+                        logger.info('%s: User %s joined the room', user, message_json.get('room'))
                         await broadcast(
                             app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user}
                         )
@@ -196,12 +196,12 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
                         room = message_json.get('room')
 
                 elif action == 'user_list':
-                    logger.info('User requested user list in room %s', room)
+                    logger.info('%s: %s requested user list', room, user)
                     user_list = await retrieve_users(app=request.app, room=room)
                     await current_websocket.send_json(user_list)
 
                 elif action == 'chat_message':
-                    logger.info('Got chat message %s', message_json.get('message'))
+                    logger.info('%s: Message: %s', room, message_json.get('message'))
                     await current_websocket.send_json(
                         {'action': 'chat_message', 'success': True, 'message': message_json.get('message')}
                     )
@@ -211,7 +211,6 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
                         message={'action': 'chat_message', 'message': message_json.get('message'), 'user': user},
                         ignore_user=user,
                     )
-
     if current_websocket.closed:
         await broadcast(app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user})
     return current_websocket
