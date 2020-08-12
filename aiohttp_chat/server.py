@@ -46,60 +46,41 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
     Chat backend. Add it to the route like this:
         - app.add_routes([web.get('/chat', handler=ws_chat)])
 
-    Things your client can do with this server:
-    1) Connect
+    #Input/Response API
+    Note that you will *not* receive the broadcast message about your changes, only your confirmation or error.
 
-    2) Set a nick name. Your nick will be a random nickname by default. (E.g. `User1234`)
-       This can be called multiple times to change nick name
-       Usage:
-        - Change nick json body:
-            - {'action': 'set_nick', 'nick': '<my nickname>'}
-        - If nickname is rejected, you will get an error message:
-            - {'action': 'set_nick', 'success': False, 'message': 'Nickname is already in use'}
-        - If nickname is approved, no error will be present:
-            - {'action': 'set_nick', 'success': True, 'message': ''}
+    **Change Nick**:
+    * Input: `{'action': 'set_nick', 'nick': '<my nickname>'}`
+    * Fail: `{'action': 'set_nick', 'success': False, 'message': 'Nickname is already in use'}`
+    * OK: `{'action': 'set_nick', 'success': True, 'message': ''}`
 
-    3) Join a chat room. By default you join the `default` chat room.
-       This can be called multiple times to change room
-       Usage:
-        - Change room json body:
-            - {'action': 'join_room', 'room': '<room name>'}
-        - If everything is OK, no error will be present:
-            - {'action': 'join_room', 'success': True, 'message': ''}
 
-    4) Chat!
-       NB: The body returned on a sent message is not the same as a message received from another person
-       Usage:
-        - Done by sending a body like this:
-             - {'action': 'chat_message', 'message': '<my message>'}
-        - If everything is OK, this message will be returned:
-             - {'action': 'chat_message', 'success': True, 'message': '<chat_message>'}
+    **Join a room**:
+    * Input: `{'action': 'join_room', 'room': '<room name>'}`
+    * OK: `{'action': 'join_room', 'success': True, 'message': ''}`
 
-    5) Ask for user list of a room
-       Usage:
-        - Ask for user list body:
-            - {'action': 'user_list', 'room': '<room_name>'}
-        - Body retrieved:
-            - {'action': 'user_list', 'success': True, 'room': '<room_name>', 'users': ['<user1>', '<user2>']}
-    6) Disconnect
-        - With aiohttp close the connection normally:
-             websocket.close()
-        (- OR Send a close code: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent)
-    
-    All messages on your actions will return with a `'success': True/False`.
+    **Send a message**:
+    * Input: `{'action': 'chat_message', 'message': '<my message>'}`
+    * OK: `{'action': 'chat_message', 'success': True, 'message': '<chat_message>'}`
 
+    **Room user list**:
+    * Input: `{'action': 'user_list', 'room': '<room_name>'}`
+    * OK:`{'action': 'user_list', 'success': True, 'room': '<room_name>', 'users': ['<user1>', '<user2>']}`
+
+
+    # Broadcast messages
     Bodies this server may broadcast to your client at any time:
     - When your client is connecting:
-        - {'action': 'connecting', 'room': room, 'user': user}
+        - `{'action': 'connecting', 'room': room, 'user': user}`
     - When someone joins the room:
-        - {'action': 'joined', 'room': room, 'user': user}
+        - `{'action': 'joined', 'room': room, 'user': user}`
     - When someone leaves the room:
-        - {'action': 'left', 'room': room, 'user': user}
+        - `{'action': 'left', 'room': room, 'user': user}`
     - When someone changes their nick name:
-        - {'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}
+        - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
     - When someone sends a message:
-        - {'action': 'chat_message', 'message': message, 'user': user}
-    
+        - `{'action': 'chat_message', 'message': message, 'user': user}`
+
     :param request: Request object
     :return: Websocket response
     """
@@ -197,7 +178,7 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
 
                 elif action == 'user_list':
                     logger.info('%s: %s requested user list', room, user)
-                    user_list = await retrieve_users(app=request.app, room=room)
+                    user_list = await retrieve_users(app=request.app, room=message_json['room'])
                     await current_websocket.send_json(user_list)
 
                 elif action == 'chat_message':
