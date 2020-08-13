@@ -71,8 +71,8 @@ async def handler() -> None:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
             # Change nick to `Jonas` and change room to `test`
-            await ws.send_json({'action': 'set_nick', 'nick': 'Jonas'})
             await ws.send_json({'action': 'join_room', 'room': 'test'})
+            await ws.send_json({'action': 'set_nick', 'nick': 'Jonas'})
 
             ping_task = asyncio.create_task(ping(websocket=ws))
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
