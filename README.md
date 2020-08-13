@@ -1,3 +1,6 @@
+[![Example Project](https://img.shields.io/badge/project%20type-example%20code-009900.svg)](https://github.com/JonasKs/aiohttp-chat/)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # aiohttp-chat
 This project was created in order to learn more about aiohttp and asyncio, aimed to tackle the following tasks:
 - Use WebSockets to subscribe to data with `aiohttp`
@@ -24,7 +27,7 @@ poetry install
 * Properly shut down if one task raises an exception or is completed
 
 The server is mixed together in `server.py`, but the `ws_echo`-function is the view that is used.  
-For more information about the server and how it works, please look at the documentation for [#server](#Server)
+For more information about the actual chat server and how it works, please have a look at the [#server explanation](#Server-explanation) section.
 
 ## Chat
 The chat is a bit more complicated than the echo example, and requires one to know the server API in order to 
