@@ -81,5 +81,5 @@ async def broadcast(app: web.Application, room: str, message: dict, ignore_user:
         if ignore_user and user == ignore_user:
             pass
         else:
-            logger.debug('> Sending message %s to %s', message, user)
+            logger.info('> Sending message %s to %s', message, user)
             await ws.send_json(message)

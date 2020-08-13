@@ -64,6 +64,8 @@ Bodies this server may broadcast to your client at any time:
     - `{'action': 'joined', 'room': room, 'user': user}`
 - When someone leaves the room:
     - `{'action': 'left', 'room': room, 'user': user}`
+- When someone disconnects without using `.close()` (e.g. using CTRL+C to stop their client):
+    - `{'action': 'shame_disconnect', 'room': room, 'user': user}`
 - When someone changes their nick name:
     - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
 - When someone sends a message:

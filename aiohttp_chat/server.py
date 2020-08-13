@@ -77,6 +77,8 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
         - `{'action': 'joined', 'room': room, 'user': user}`
     - When someone leaves the room:
         - `{'action': 'left', 'room': room, 'user': user}`
+    - When someone disconnects without using `.close()` (e.g. using CTRL+C to stop their client):
+        - `{'action': 'shame_disconnect', 'room': room, 'user': user}`
     - When someone changes their nick name:
         - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
     - When someone sends a message:
@@ -114,87 +116,97 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
         for ws in request.app['websockets'][room].values():
             await ws.send_json({'action': 'join', 'user': user, 'room': room})
     # Send out messages whenever they are received
-    async for message in current_websocket:  # for each message in the websocket connection
-        if isinstance(message, WSMessage):
-            if message.type == web.WSMsgType.text:  # If it's a text, process it as a message
-                # Parse incoming data
-                message_json = message.json()
-                action = message_json.get('action')
-                if action not in ALLOWED_USER_ACTIONS:
-                    await current_websocket.send_json({'action': action, 'success': False, 'message': 'Not allowed.'})
-
-                if action == 'set_nick':
-                    return_body, success = await change_nick(
-                        app=request.app, room=room, new_nick=message_json.get('nick'), old_nick=user
-                    )
-                    if not success:
-                        logger.warning(
-                            'Failed to set nick %s for %s. Reason %s',
-                            message_json.get('nick'),
-                            user,
-                            return_body['message'],
+    try:
+        async for message in current_websocket:  # for each message in the websocket connection
+            if isinstance(message, WSMessage):
+                if message.type == web.WSMsgType.text:  # If it's a text, process it as a message
+                    # Parse incoming data
+                    message_json = message.json()
+                    action = message_json.get('action')
+                    if action not in ALLOWED_USER_ACTIONS:
+                        await current_websocket.send_json(
+                            {'action': action, 'success': False, 'message': 'Not allowed.'}
                         )
-                        await current_websocket.send_json(return_body)
-                    else:
-                        logger.info('%s: %s is now known as %s', room, user, message_json.get('nick'))
-                        await current_websocket.send_json(return_body)
+
+                    if action == 'set_nick':
+                        return_body, success = await change_nick(
+                            app=request.app, room=room, new_nick=message_json.get('nick'), old_nick=user
+                        )
+                        if not success:
+                            logger.warning(
+                                'Failed to set nick %s for %s. Reason %s',
+                                message_json.get('nick'),
+                                user,
+                                return_body['message'],
+                            )
+                            await current_websocket.send_json(return_body)
+                        else:
+                            logger.info('%s: %s is now known as %s', room, user, message_json.get('nick'))
+                            await current_websocket.send_json(return_body)
+                            await broadcast(
+                                app=request.app,
+                                room=room,
+                                message={
+                                    'action': 'nick_changed',
+                                    'room': room,
+                                    'from_user': user,
+                                    'to_user': message_json.get('nick'),
+                                },
+                                ignore_user=message_json.get('nick'),
+                            )  # Customized return body to the user is sent, so we ignore it.
+                            user = message_json.get('nick')
+
+                    elif action == 'join_room':
+                        return_body, success = await change_room(
+                            app=request.app, new_room=message_json.get('room'), old_room=room, nick=user
+                        )
+                        if not success:
+                            logger.info(
+                                '%s: Unable to change room for %s to %s, reason: %s',
+                                room,
+                                user,
+                                message_json.get('room'),
+                                return_body['message'],
+                            )
+                            await current_websocket.send_json(return_body)
+                        else:
+                            logger.info('%s: User %s joined the room', user, message_json.get('room'))
+                            await broadcast(
+                                app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user}
+                            )
+                            await broadcast(
+                                app=request.app,
+                                room=message_json.get('room'),
+                                message={'action': 'joined', 'room': room, 'user': user},
+                                ignore_user=user,
+                            )
+                            room = message_json.get('room')
+
+                    elif action == 'user_list':
+                        logger.info('%s: %s requested user list', room, user)
+                        user_list = await retrieve_users(app=request.app, room=message_json['room'])
+                        await current_websocket.send_json(user_list)
+
+                    elif action == 'chat_message':
+                        logger.info('%s: Message: %s', room, message_json.get('message'))
+                        await current_websocket.send_json(
+                            {'action': 'chat_message', 'success': True, 'message': message_json.get('message')}
+                        )
                         await broadcast(
                             app=request.app,
                             room=room,
-                            message={
-                                'action': 'nick_changed',
-                                'room': room,
-                                'from_user': user,
-                                'to_user': message_json.get('nick'),
-                            },
-                            ignore_user=message_json.get('nick'),
-                        )  # Customized return body to the user is sent, so we ignore it.
-                        user = message_json.get('nick')
-
-                elif action == 'join_room':
-                    return_body, success = await change_room(
-                        app=request.app, new_room=message_json.get('room'), old_room=room, nick=user
-                    )
-                    if not success:
-                        logger.info(
-                            '%s: Unable to change room for %s to %s, reason: %s',
-                            room,
-                            user,
-                            message_json.get('room'),
-                            return_body['message'],
-                        )
-                        await current_websocket.send_json(return_body)
-                    else:
-                        logger.info('%s: User %s joined the room', user, message_json.get('room'))
-                        await broadcast(
-                            app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user}
-                        )
-                        await broadcast(
-                            app=request.app,
-                            room=message_json.get('room'),
-                            message={'action': 'joined', 'room': room, 'user': user},
+                            message={'action': 'chat_message', 'message': message_json.get('message'), 'user': user},
                             ignore_user=user,
                         )
-                        room = message_json.get('room')
-
-                elif action == 'user_list':
-                    logger.info('%s: %s requested user list', room, user)
-                    user_list = await retrieve_users(app=request.app, room=message_json['room'])
-                    await current_websocket.send_json(user_list)
-
-                elif action == 'chat_message':
-                    logger.info('%s: Message: %s', room, message_json.get('message'))
-                    await current_websocket.send_json(
-                        {'action': 'chat_message', 'success': True, 'message': message_json.get('message')}
-                    )
-                    await broadcast(
-                        app=request.app,
-                        room=room,
-                        message={'action': 'chat_message', 'message': message_json.get('message'), 'user': user},
-                        ignore_user=user,
-                    )
+    finally:
+        # When a connection is stopped, remove the connection
+        request.app['websockets'][room].pop(user)
     if current_websocket.closed:
+        # This only happens if a close signal is received.
         await broadcast(app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user})
+    else:
+        # Abrupt disconnect without close signal (e.g. `ctrl`+`c`)
+        await broadcast(app=request.app, room=room, message={'action': 'shame_disconnect', 'room': room, 'user': user})
     return current_websocket
 
 

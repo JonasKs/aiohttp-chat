@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
+from aioconsole import ainput
 from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.http_websocket import WSMessage
 from aiohttp.web import WSMsgType
-from aioconsole import ainput
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('client')
@@ -22,7 +22,7 @@ async def subscribe_to_messages(websocket: ClientWebSocketResponse) -> None:
             if message.type == WSMsgType.text:
                 message_json = message.json()
                 if message_json.get('action') == 'chat_message' and not message_json.get('success'):
-                    print(f'> {message_json["message"]}')
+                    print(f'>>>{message_json["user"]}: {message_json["message"]}')
                 logger.info('> Message from server received: %s', message_json)
 
 
@@ -50,12 +50,15 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
     :return:
     """
     while True:
-        message = await ainput(prompt='Message: ')
-        logger.info('< Sending message: %s', message)
-        await websocket.send_json({'action': 'chat_message', 'message': message})
+        message = await ainput('<<<')
+        if message == 'command close':
+            await websocket.close()
+        else:
+            logger.info('\n< Sending message: %s', message)
+            await websocket.send_json({'action': 'chat_message', 'message': message})
 
 
-async def handler() -> None:
+async def handler(nick: str = None, room: str = None) -> None:
     """
     Does the following things well:
       * Task that subscribes to all messages from the server
@@ -71,8 +74,8 @@ async def handler() -> None:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
             # Change nick to `Jonas` and change room to `test`
-            await ws.send_json({'action': 'join_room', 'room': 'test'})
-            await ws.send_json({'action': 'set_nick', 'nick': 'Jonas'})
+            await ws.send_json({'action': 'join_room', 'room': room})
+            await ws.send_json({'action': 'set_nick', 'nick': nick})
 
             ping_task = asyncio.create_task(ping(websocket=ws))
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
@@ -98,8 +101,10 @@ async def handler() -> None:
 
 
 if __name__ == '__main__':
+    input_nick = input('Nick: ')
+    input_room = input('Room: ')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(handler())
+    loop.run_until_complete(handler(nick=input_nick, room=input_room))
 
     # The code below can be ignored, but I put it in as a reference for those who would like to implement this in a
     # production system.
