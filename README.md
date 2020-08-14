@@ -11,6 +11,8 @@ This project was created in order to learn more about aiohttp and asyncio, aimed
 - Create a server that is very simplified and minimalistic, but supports chat rooms with `aiohttp`. 
 
 
+The server is temporarily available through Azure: `aiohttp-chat.norwayeast.cloudapp.azure.com:8080`. 
+
 ## Installation
 Install the environment and requirements:
 ```bash
@@ -31,16 +33,15 @@ For more information about the actual chat server and how it works, please have 
 
 ## Chat
 The chat is a bit more complicated than the echo example, and requires one to know the server API in order to 
-completely understand it. For an example on how to write your own client, see [#Usage](#Usage)
+completely understand it. For an example on how to write your own client, see [#Usage](#Usage).
 
 #### Input/Response API
-Note that you will *not* receive the broadcast message about your changes, only your confirmation or error.
+You will *not* receive the broadcast message about your changes, only your confirmation or error.
 
 **Change Nick**:
 * Input: `{'action': 'set_nick', 'nick': '<my nickname>'}`
 * Fail: `{'action': 'set_nick', 'success': False, 'message': 'Nickname is already in use'}`
 * OK: `{'action': 'set_nick', 'success': True, 'message': ''}`
-
 
 **Join a room**:
 * Input: `{'action': 'join_room', 'room': '<room name>'}`
@@ -63,13 +64,34 @@ Bodies this server may broadcast to your client at any time:
 - When someone joins the room:
     - `{'action': 'joined', 'room': room, 'user': user}`
 - When someone leaves the room:
-    - `{'action': 'left', 'room': room, 'user': user}`
+    - `{'action': 'left', 'room': room, 'user': user, 'shame': False}`
 - When someone disconnects without using `.close()` (e.g. using CTRL+C to stop their client):
-    - `{'action': 'shame_disconnect', 'room': room, 'user': user}`
+    - `{'action': 'left', 'room': room, 'user': user, 'shame': True}`
 - When someone changes their nick name:
     - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
 - When someone sends a message:
     - `{'action': 'chat_message', 'message': message, 'user': user}`
+
+
+#### Task
+Create a client that:
+1. Connects to the public websocket server.
+2. Joins the room `math`.
+3. Changes it's nick name.
+4. Fetches the user list in `math` and print's it in nicely.
+5. Reads broadcast messages.
+6. Whenever a user asks a basic math question (e.g. `1+1` or `1*10`), answer that user with a message. 
+There is already a bot running asking questions every 10 seconds.
+    6. Example:   
+    *MathStudent*: `1+1`  
+    *Your client*: `@MathStudent: 2`
+7. Disconnect properly. My bot will laugh at you if you don't.
+
+Bonus tasks:  
+1. Use `aioconsole` to have a terminal chat. This can be a bit buggy, but ask me if you need help.
+2. Write a website with JavaScript to utilize the websocket. Start off by reading messages, then expand.
+
+Please ask any questions if you have them. 
 
 
 #### Usage

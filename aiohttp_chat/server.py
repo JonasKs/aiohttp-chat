@@ -76,9 +76,9 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
     - When someone joins the room:
         - `{'action': 'joined', 'room': room, 'user': user}`
     - When someone leaves the room:
-        - `{'action': 'left', 'room': room, 'user': user}`
+        - `{'action': 'left', 'room': room, 'user': user, 'shame': False}`
     - When someone disconnects without using `.close()` (e.g. using CTRL+C to stop their client):
-        - `{'action': 'shame_disconnect', 'room': room, 'user': user}`
+        - `{'action': 'left', 'room': room, 'user': user, 'shame': True}`
     - When someone changes their nick name:
         - `{'action': 'nick_changed', 'room': room, 'from_user': user, 'to_user': user}`
     - When someone sends a message:
@@ -172,7 +172,9 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
                         else:
                             logger.info('%s: User %s joined the room', user, message_json.get('room'))
                             await broadcast(
-                                app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user}
+                                app=request.app,
+                                room=room,
+                                message={'action': 'left', 'room': room, 'user': user, 'shame': False},
                             )
                             await broadcast(
                                 app=request.app,
@@ -203,10 +205,14 @@ async def ws_chat(request: Request) -> web.WebSocketResponse:
         request.app['websockets'][room].pop(user)
     if current_websocket.closed:
         # This only happens if a close signal is received.
-        await broadcast(app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user})
+        await broadcast(
+            app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user, 'shame': False}
+        )
     else:
         # Abrupt disconnect without close signal (e.g. `ctrl`+`c`)
-        await broadcast(app=request.app, room=room, message={'action': 'shame_disconnect', 'room': room, 'user': user})
+        await broadcast(
+            app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user, 'shame': True}
+        )
     return current_websocket
 
 

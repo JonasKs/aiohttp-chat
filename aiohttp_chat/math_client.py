@@ -12,8 +12,8 @@ logger = logging.getLogger('client')
 
 async def subscribe_to_messages(websocket: ClientWebSocketResponse) -> None:
     """
-    A subscription handler to subscribe to messages. Simply logs them. 
-    
+    A subscription handler to subscribe to messages. Simply logs them.
+
     :param websocket: Websocket connection
     :return: None, forever living task
     """
@@ -22,24 +22,17 @@ async def subscribe_to_messages(websocket: ClientWebSocketResponse) -> None:
             if message.type == WSMsgType.text:
                 message_json = message.json()
                 if message_json.get('action') == 'chat_message' and not message_json.get('success'):
-                    print(f'>>>{message_json["user"]}: {message_json["message"]}')
+                    print(f'>>>{message_json.get("user")}: {message_json.get("message")}')
+                elif message_json.get('action') == 'joined':
+                    print(f'>>>SYSTEM: {message_json.get("user")} join the room')
+                elif message_json.get('action') == 'left':
+                    if message_json.get('shame'):
+                        print(f'>>>SYSTEM: {message_json.get("user")} left the room in SHAME!')
+                    else:
+                        print(f'>>>SYSTEM: {message_json.get("user")} left the room politely!')
+                elif message_json.get('action') == 'nick_changed':
+                    print(f'>>>SYSTEM: {message_json.get("from_user")} is now known as {message_json.get("to_user")}')
                 logger.info('> Message from server received: %s', message_json)
-
-
-async def ping(websocket: ClientWebSocketResponse) -> None:
-    """
-    A function that sends a PING every minute to keep the connection alive.
-
-    Note that you can do this automatically by simply using `autoping=True` and `heartbeat`. 
-    This is implemented as an example.
-    
-    :param websocket: Websocket connection
-    :return: None, forever living task
-    """
-    while True:
-        logger.debug('< PING')
-        await websocket.ping()
-        await asyncio.sleep(60)
 
 
 async def send_input_message(websocket: ClientWebSocketResponse) -> None:
@@ -49,42 +42,34 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
     :param websocket: Websocket connection
     :return:
     """
+    
     while True:
-        message = await ainput('<<<')
-        if message == 'command close':
-            await websocket.close()
-        else:
-            logger.info('\n< Sending message: %s', message)
-            await websocket.send_json({'action': 'chat_message', 'message': message})
+        questions = ['2 + 2', '10 * 1', '40 * 40', '10 - 5', '12 + 4', '55 + 45', '99 + 1', '0 * 999', '44 -14']
+        for question in questions:
+            print('\n< What is %s?', question)
+            await websocket.send_json({'action': 'chat_message', 'message': question})
+            await asyncio.sleep(15)
 
 
-async def handler(nick: str = None, room: str = None) -> None:
+async def handler() -> None:
     """
     Does the following things well:
-      * Task that subscribes to all messages from the server
-      * Task that PINGs the backend every 60 second
-      * Change the nickname to `Jonas`
-      * Join a chat room called `test`
-      * Allows sending message from the terminal
-    Does the following bad:
-      * Message formatting. Logs are simply written.
-    :return: 
+        * Subscribes to messages and prints them
+        * Asks questions
+    :return: None
     """
     async with ClientSession() as session:
         async with session.ws_connect('ws://0.0.0.0:8080/chat', ssl=False) as ws:
             read_message_task = asyncio.create_task(subscribe_to_messages(websocket=ws))
             # Change nick to `Jonas` and change room to `test`
-            await ws.send_json({'action': 'join_room', 'room': room})
-            await ws.send_json({'action': 'set_nick', 'nick': nick})
-
-            ping_task = asyncio.create_task(ping(websocket=ws))
+            await ws.send_json({'action': 'join_room', 'room': 'math'})
+            await ws.send_json({'action': 'set_nick', 'nick': 'MathStudent'})
             send_input_message_task = asyncio.create_task(send_input_message(websocket=ws))
 
-            await ws.send_json({'action': 'user_list', 'room': 'test'})
             # This function returns two variables, a list of `done` and a list of `pending` tasks.
             # We can ask it to return when all tasks are completed, first task is completed or on first exception
             done, pending = await asyncio.wait(
-                [read_message_task, ping_task, send_input_message_task], return_when=asyncio.FIRST_COMPLETED,
+                [read_message_task, send_input_message_task], return_when=asyncio.FIRST_COMPLETED,
             )
             # When this line of line is hit, we know that one of the tasks has been completed.
             # In this program, this can happen when:
@@ -101,10 +86,8 @@ async def handler(nick: str = None, room: str = None) -> None:
 
 
 if __name__ == '__main__':
-    input_nick = input('Nick (random if not provided): ')
-    input_room = input('Room (`Default` if not provided): ')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(handler(nick=input_nick, room=input_room))
+    loop.run_until_complete(handler())
 
     # The code below can be ignored, but I put it in as a reference for those who would like to implement this in a
     # production system.
