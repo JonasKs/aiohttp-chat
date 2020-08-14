@@ -80,10 +80,10 @@ Create a client that:
 3. Changes it's nick name.
 4. Fetches the user list in `math` and print's it in nicely.
 5. Reads broadcast messages.
-6. Whenever a user asks a basic math question (e.g. `1+1` or `1*10`), answer that user with a message. 
+6. Whenever a user asks a basic math question (e.g. `1 + 1` or `1 * 10`), answer that user with a message. 
 There is already a bot running asking questions every 10 seconds.
     6. Example:   
-    *MathStudent*: `1+1`  
+    *MathStudent*: `1 + 1`  
     *Your client*: `@MathStudent: 2`
 7. Disconnect properly. My bot will laugh at you if you don't.
 

@@ -1,12 +1,11 @@
 import asyncio
 import logging
 
-from aioconsole import ainput
 from aiohttp import ClientSession, ClientWebSocketResponse
 from aiohttp.http_websocket import WSMessage
 from aiohttp.web import WSMsgType
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger('client')
 
 
@@ -42,11 +41,11 @@ async def send_input_message(websocket: ClientWebSocketResponse) -> None:
     :param websocket: Websocket connection
     :return:
     """
-    
+
     while True:
         questions = ['2 + 2', '10 * 1', '40 * 40', '10 - 5', '12 + 4', '55 + 45', '99 + 1', '0 * 999', '44 -14']
         for question in questions:
-            print('\n< What is %s?', question)
+            print(f'< What is {question}')
             await websocket.send_json({'action': 'chat_message', 'message': question})
             await asyncio.sleep(15)
 
