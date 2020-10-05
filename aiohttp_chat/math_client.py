@@ -85,12 +85,4 @@ async def handler() -> None:
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(handler())
-
-    # The code below can be ignored, but I put it in as a reference for those who would like to implement this in a
-    # production system.
-    # Zero-sleep to allow underlying connections to close
-    # Change sleep to 0.250 if using SSL! https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
-    loop.run_until_complete(asyncio.sleep(0))
-    loop.close()
+    asyncio.run(handler())
